@@ -64,9 +64,9 @@ def plot_grid_background(datacube,imagenames):
 
 #Function for dark correction
 
-def dark_correct(image_name, raw_data, masterdark_dict):
+def dark_correct(image_name, raw_data, masterdark_dict, datadir):
 
-    header = fits.getheader(image_name)
+    header = fits.getheader(datadir+image_name)
     exptime = int(float(header['ITIME'])/1000.)
     obj = header['OBJECT']
     print(exptime)
