@@ -1,25 +1,16 @@
 import os
 import numpy as np
 import scipy
-import sys
+#import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import glob
 from astropy.io import fits
-from astropy.stats import sigma_clip
 from scipy.ndimage import interpolation as interp
 
-#from skimage.feature.register_translation import (register_translation, _upsampled_dft)
-#^ depracated, using the following instead
 from skimage.registration import phase_cross_correlation
-import aotools
-import astroscrappy
-from scipy.optimize import leastsq
-import ccdproc
-import gc
 
 
 
@@ -62,24 +53,8 @@ def plot_grid_background(datacube,imagenames):
         plt.imshow(np.log10(B), origin='lower', cmap='gray',vmin=2,vmax=3)
         plt.title(imagenames[i])
 
-#Function for dark correction
-
-def dark_correct(image_name, raw_data, masterdark_dict, datadir):
-
-    header = fits.getheader(datadir+image_name)
-    exptime = int(float(header['ITIME'])/1000.)
-    obj = header['OBJECT']
-    print(exptime)
 
 
-    out = raw_data[image_name] - masterdark_dict[exptime]
-
-
-    #If this is a flat, normalize by exposure time
-    if 'flat' in obj.lower():
-        out = out/exptime
-
-    return out
 
 #Function for identifying centroid position and counts
 from scipy.ndimage.filters import median_filter, gaussian_filter
@@ -124,7 +99,6 @@ def guess_gaussian_parameters(d):
     # Now, find the maximum of this image:
     y0, x0 = np.where(d_gfiltered == np.max(d_gfiltered))
 
-
     # Take the first element. This helps in two cases: (1) only one maximum has
     # been found, the outputs are numpy arrays and you want to extract the numbers
     # and (2) in case there are several maximums (this has not happened so
@@ -166,3 +140,80 @@ def get_neighbors(i,j,data):
 
         except IndexError:
             return data[i][j]
+
+def sigma_clip(object_list, flat_darkcor_data_out):
+
+    flat_darkcor_sigmacut_data = {}
+    skyframe_data = {}
+
+
+    for img in object_list:
+        data = flat_darkcor_data_out[img][450:1050,850:1450]
+        print(img)
+        #create a new array
+        data2 = np.zeros((600,600))
+
+        for i in range(len(data)):
+             for j in range(len(data[0])):
+                neighbors = get_neighbors(i,j,data)
+                nvals = np.median(neighbors)
+                if np.abs(nvals-data[i][j]) < 10:
+                    data2[i][j] = data[i][j]
+                else:
+                    data2[i][j] = nvals
+
+        flat_darkcor_sigmacut_data[img] = data2
+
+    return flat_darkcor_sigmacut_data
+
+
+def image_shift(object_list, center, sky_flat_darkcor_data_out, datadir):
+    #Want to write something that checks all of these and finds the one with the highest S/N ratio
+    #I'm thinking we can take the ratio of the centroid counts to some random background area
+    #Will have to use that guess Gaussian parameters to find the centroid
+    highest = 0
+    zero_shift_image = center[0]
+    for i in range(len(center)):
+        data = sky_flat_darkcor_data_out[center[i]]
+
+        x0,y0,sigma,A = guess_gaussian_parameters(data)
+        centroid_window = data[y0-1:y0+1,x0-1:x0+1]
+        cent_counts = np.mean(centroid_window)
+        x1 = x0-200
+        y1 = y0-200
+        noise_window = data[y1-5:y1+5,x1-5:x1+5]
+        noise = abs(np.mean(noise_window))
+        StN = cent_counts/noise
+        if StN > highest:
+            highest = StN
+            zero_shift_image = center[i]
+            numb = i
+            header = fits.getheader(datadir+center[i])
+
+    ## find all shifts for other images:
+    imshifts = {} # dictionary to hold the x and y shift pairs for each image
+    for image in object_list:
+    ## register_translation is a function that calculates shifts by comparing 2-D arrays
+        result, error, diffphase = phase_cross_correlation(
+            sky_flat_darkcor_data_out[zero_shift_image],
+            sky_flat_darkcor_data_out[image])
+        imshifts[image] = result
+
+
+
+    ## new dictionary for shifted image data:
+    shifted_target_data = {}
+    for im in object_list:
+        ## interp.shift is the function doing the heavy lifting here,
+        ## it's reinterpolating each array into the new, shifted one
+        shifted_target_data[im] = interp.shift(
+            sky_flat_darkcor_data_out[im],
+            imshifts[im])
+
+
+    ## array of aligned arrays:
+    targetcube_shift  = np.stack(shifted_target_data.values(),axis=0)
+
+    ## average combined final image:
+    target_stacked = np.median(targetcube_shift, axis=0)
+    return target_stacked
