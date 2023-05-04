@@ -2,8 +2,9 @@ import os
 import numpy as np
 import scipy
 #import sys
-
-import matplotlib
+import numpy as np
+from scipy.signal import fftconvolve
+from scipy.ndimage import shift
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -11,7 +12,6 @@ from astropy.io import fits
 from scipy.ndimage import interpolation as interp
 
 from skimage.registration import phase_cross_correlation
-
 
 
 ## function to plot an image cube
@@ -167,6 +167,15 @@ def sigma_clip(object_list, flat_darkcor_data_out):
     return flat_darkcor_sigmacut_data
 
 
+def weighted_centroid(image):
+    threshold = np.median(image) + 3 * np.std(image)  # set threshold to 3 sigma above median
+    binary_mask = np.where(image > threshold, 1, 0)  # create binary mask
+    total_flux = np.sum(binary_mask)  # calculate total flux of star
+    x, y = np.meshgrid(np.arange(image.shape[1]), np.arange(image.shape[0]))  # create x and y grids
+    x0 = np.sum(x * binary_mask) / total_flux  # calculate x centroid
+    y0 = np.sum(y * binary_mask) / total_flux  # calculate y centroid
+    return round(x0), round(y0)
+
 def image_shift(object_list, center, sky_flat_darkcor_data_out, datadir):
     #Want to write something that checks all of these and finds the one with the highest S/N ratio
     #I'm thinking we can take the ratio of the centroid counts to some random background area
@@ -175,8 +184,7 @@ def image_shift(object_list, center, sky_flat_darkcor_data_out, datadir):
     zero_shift_image = center[0]
     for i in range(len(center)):
         data = sky_flat_darkcor_data_out[center[i]]
-
-        x0,y0,sigma,A = guess_gaussian_parameters(data)
+        x0, y0 = weighted_centroid(data)
         centroid_window = data[y0-1:y0+1,x0-1:x0+1]
         cent_counts = np.mean(centroid_window)
         x1 = x0-200
@@ -194,21 +202,20 @@ def image_shift(object_list, center, sky_flat_darkcor_data_out, datadir):
     imshifts = {} # dictionary to hold the x and y shift pairs for each image
     for image in object_list:
     ## register_translation is a function that calculates shifts by comparing 2-D arrays
-        result, error, diffphase = phase_cross_correlation(
-            sky_flat_darkcor_data_out[zero_shift_image],
-            sky_flat_darkcor_data_out[image])
-        imshifts[image] = result
-
-
+        # result, error, diffphase = phase_cross_correlation(
+        #     sky_flat_darkcor_data_out[zero_shift_image],
+        #     sky_flat_darkcor_data_out[image])
+        corr = fftconvolve(sky_flat_darkcor_data_out[zero_shift_image], sky_flat_darkcor_data_out[image][::-1, ::-1], mode='same')
+        y, x = np.unravel_index(np.argmax(corr), corr.shape)
+        shifts = [y - corr.shape[0] // 2, x - corr.shape[1] // 2]
+        imshifts[image] = shifts
 
     ## new dictionary for shifted image data:
     shifted_target_data = {}
     for im in object_list:
         ## interp.shift is the function doing the heavy lifting here,
         ## it's reinterpolating each array into the new, shifted one
-        shifted_target_data[im] = interp.shift(
-            sky_flat_darkcor_data_out[im],
-            imshifts[im])
+        shifted_target_data[im] = shift(sky_flat_darkcor_data_out[im], imshifts[im])
 
 
     ## array of aligned arrays:
