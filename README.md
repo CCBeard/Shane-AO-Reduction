@@ -9,3 +9,5 @@ The notebook "Image_reduction_plots.ipynb" is currently the main action, and mos
 
 The "veto.ipynb" is required to generate a list of vetoed frames from a night of observing. That code is designed to automatically reject overexposed data (counts > 25k) or underexposed data (counts < 10k), but can be adjusted for your scientific needs
 
+
+![Star_Image](https://github.com/CCBeard/Shane-AO-Reduction/blob/main/Star_Image.png)
