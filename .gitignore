@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# R (stray session files)
+.Rhistory
+.RData
+
+# Raw observing nights: only the bundled test set is tracked
+Raw_Data/*
+!Raw_Data/Test_Data/

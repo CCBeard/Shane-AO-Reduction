@@ -4,7 +4,7 @@ Sky Subtraction
 
 from astropy.io import fits
 import numpy as np
-from utils import guess_gaussian_parameters, weighted_centroid
+from .utils import weighted_centroid
 
 
 def make_master_sky(object_list, flat_darkcor_sigmacut_data, datadir):
@@ -89,16 +89,15 @@ def make_master_sky(object_list, flat_darkcor_sigmacut_data, datadir):
         # If we don't have enough dither positions, this doesn't work
         print('Positions = ' + str(pos))
         if pos < 3:
-            print('Exposure Time: ' + str(exposuretimes[i]))
-            print('Gonna delete: ')
-            print(explist[i])
+            print('Too few dither positions for exposure time ' + str(time) + ' s, removing:')
+            print(exp_dict[time])
             for obj in exp_dict[time]:
                 object_list.remove(obj)
-                continue
+            del exp_dict[time]
+            continue
 
-        skycubelist = np.concatenate(
-            [toprt[0:min_dither], toplft[0:min_dither], btmrt[0:min_dither], btmlft[0:min_dither],
-             center[0:min_dither]])
+        skycubelist = (toprt[0:min_dither] + toplft[0:min_dither] + btmrt[0:min_dither]
+                       + btmlft[0:min_dither] + center[0:min_dither])
         skycube = np.stack([flat_darkcor_sigmacut_data[science_frame] for science_frame \
                             in skycubelist], axis=0)
         master_sky_dict[time] = np.median(skycube, axis=0)
@@ -113,4 +112,4 @@ def sky_subtract(object_list, exptimes, flat_darkcor_sigmacut_data, exp_dict, ma
             skysub_image = flat_darkcor_sigmacut_data[im] - master_sky_dict[time]
             sky_flat_darkcor_data_out[im] = skysub_image
 
-        return sky_flat_darkcor_data_out
+    return sky_flat_darkcor_data_out
