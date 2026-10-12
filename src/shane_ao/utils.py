@@ -210,7 +210,7 @@ def image_shift(object_list, center, sky_flat_darkcor_data_out, datadir):
 
 
     ## array of aligned arrays:
-    targetcube_shift  = np.stack(shifted_target_data.values(),axis=0)
+    targetcube_shift  = np.stack(list(shifted_target_data.values()),axis=0)
 
     ## average combined final image:
     target_stacked = np.median(targetcube_shift, axis=0)
