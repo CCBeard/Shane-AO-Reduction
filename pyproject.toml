@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shane-ao-reduction"
+dynamic = ["version"]
+description = "Reduction pipeline for ShARCS adaptive optics images from the Shane 3 m telescope at Lick Observatory"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Corey Beard" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.22",
+    "scipy>=1.8",
+    "astropy>=5.0",
+    "matplotlib>=3.6",
+]
+
+[project.optional-dependencies]
+notebooks = ["jupyterlab"]
+
+[project.urls]
+Repository = "https://github.com/CCBeard/Shane-AO-Reduction"
+
+[tool.setuptools.dynamic]
+version = { attr = "shane_ao.__version__" }

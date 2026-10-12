@@ -4,7 +4,7 @@ Sky Subtraction
 
 from astropy.io import fits
 import numpy as np
-from utils import guess_gaussian_parameters, weighted_centroid
+from .utils import weighted_centroid
 
 
 def make_master_sky(object_list, flat_darkcor_sigmacut_data, datadir):

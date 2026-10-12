@@ -1,17 +1,9 @@
-import os
 import numpy as np
-import scipy
-#import sys
-import numpy as np
-from scipy.signal import fftconvolve
-from scipy.ndimage import shift
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-
 from astropy.io import fits
-from scipy.ndimage import interpolation as interp
-
-from skimage.registration import phase_cross_correlation
+from scipy.ndimage import gaussian_filter, shift
+from scipy.signal import fftconvolve
 
 
 ## function to plot an image cube
@@ -57,7 +49,6 @@ def plot_grid_background(datacube,imagenames):
 
 
 #Function for identifying centroid position and counts
-from scipy.ndimage.filters import median_filter, gaussian_filter
 def guess_gaussian_parameters(d):
     """
     This image guesses the maximum intensity of the
